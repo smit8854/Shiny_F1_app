@@ -1,0 +1,32 @@
+---
+title: "App Proposal"
+author: "Michael Smith"
+date: "4/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## App Name
+Formula One World Championship Dashboard
+
+
+## App Purpose
+The main purpose of the app will be to serves as a quick information dashboard for all seasons of the Formula 1 Championship.
+
+## Sources
+There are multiple F1 databases available on Kaggle that include data from 1950 - 2020. I have to do a big of digging, but I *think* the databases can be easily updated to include 2021 and some of they may already have this information. These resources are publicly available and therefore my app will be publicly available as well. If I can get the content to update and I can make it pretty enough, I would like to share the app on the Formula One subreddit, where there are over 1.4 million subscribers. 
+
+[link to Kaggle F1 datasets](https://www.kaggle.com/datasets?search=formula+&datasetsOnly=true)  
+[link to API](http://ergast.com/mrd/)
+
+## App Functions
+Users will be able to access which driver and team won the respective championships for a given season, see a table of driver and team standings, individual driver results from qualifying and the race, head-to-head teammate results, individual race results, and other summary results for a given season. There could also be an all time records section featuring who has the most wins, championships, pole positions, etc, through the sports history. I would also like the app to give information about when the next race will be. Ideally, since the first race of the year has already happened, this dashboard would update automatically as the current 2021 season continues.
+
+## Challenges
+One challenge I could see is how to display all of the data in a clear and concise way, while maintaining the aesthetics of the web page. I suspect I will have to utilize the different tab and navigation bar menu features of shinyapp to make it work. Another problem might be implementing the filters in specific combinations to display the information the user wants to see. Finally, because F1 hosts races all over the world, time-zones are essential in figuring out when race events occur in local time. Time and dates are not my favorite variables to deal with in R, and I anticipate this being a total pain.   
+
+## Division of Labor
+I am judge, jury, and executioner, so it's all on me. 

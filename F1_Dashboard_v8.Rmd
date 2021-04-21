@@ -1,0 +1,412 @@
+---
+title: "F1 Dashboard"
+author: "Michael L. Smith"
+date: "`r format(Sys.time(), '%m.%d.%Y')`"
+output: html_document
+runtime: shiny
+---
+
+## Note to Marta and Jiuzhou: 
+I cannot get the app to work by uploading to the `shinyapps.io`, however it does run on my local machine within this RMD file. I **think** I've uploaded the correct files that I'm using locally for it to run on your personal machine. If not please let me know! The knitted RMD file embeds the app, but the formatting gets weird and it's more difficult to navigate. If you run the `Shiny Formula 1 App!` section below the app **should** work (after loading packages of course). 
+
+## Data Sources
+1. [Ergast Api](http://ergast.com/mrd/)  
+2. [Arkraieski Github](https://github.com/arkraieski/formula1data)
+3. [Report by Yun Mai](https://rstudio-pubs-static.s3.amazonaws.com/276999_042092be8e31414f82ef4f41e31fe5c8.html)
+
+## Load Libraries
+
+```{r setup, include=TRUE, message=FALSE, warning=FALSE}
+
+library(shiny)
+library(tidyverse)
+library(httr)
+library(jsonlite)
+library(gt)
+library(lubridate)
+library(gganimate)
+library(gifski)
+library(formula1data)
+library(XML)
+library(httr)
+library(RCurl)
+library(jsonlite)
+
+library(devtools)
+install_github("arkraieski/formula1data")
+
+
+```
+
+
+## Load Datasets
+Using the `formula1data` package download the `Ergast API` data. These data include every F1 season from 1950 - 2021. For each season there are data for the race results, qualifying results, standings, driver information, constructor information, circuit information, lapt times, pit stops, and racing schedule.  
+
+First we need to create a connection to the `Ergast API` using the `formula1data` package. This only needs to be done once! So after you run this you can comment it out.
+
+```{r load data}
+# createF1db()
+
+```
+
+
+## F1 Schedule Function
+This is a modified version of the `getF1Schedule()` function from the `formula1data` package. Used to create the calendar tab in the shiny app.
+
+```{r edit getF1schedule function}
+
+getF1Schedule2 <- function(year){
+  url <- paste0("https://ergast.com/api/f1/", year, ".json")
+  sched <- fromJSON(content(GET(url), as = "text"))$MRData$RaceTable$Races
+  sched <- sched %>%
+    mutate_at(c("season", "round"), as.integer) %>%
+    mutate(time = gsub("Z", "", .data$time),
+           datetime = ymd_hms(paste(.data$date, .data$time)))
+    # select(-.data$time)
+  sched
+
+}
+
+```
+
+
+## Shiny Formula 1 App!
+This app has 4 main features:   
+1. a tab for the season driver championship results  
+2. a tab for the season constructor championship results  
+3. a tab for the 2021 season calendar  
+4. a tab for the 2021 race results so far  
+
+I am not satisfied with how the app looks visually and the layout of a few features but it functions. Run the chunk of code below to view the shiny app in all it's glory. Note about the 2021 race results tab: it may look like it's doing nothing at first, but wait ~30 seconds and the gif should load with the race results table below!
+
+```{r Shiny App, echo = FALSE}
+
+ui <- navbarPage(title = "Formula 1 Dashboard",
+                  tabPanel(title = "Season Driver Results",
+                           numericInput(inputId = "season_driver", label = "Enter a year from 1950 - 2021", value = 2021, min = 1950, max = 2021),
+                           plotOutput("season_driver"),
+                           br(),
+                           gt_output("driver_season"), br(),br()
+                  ),
+                  tabPanel(title = "Season Constructor  Results",
+                           numericInput(inputId = "year", label = "Enter a year from 1958 - 2021", value = 2021, min = 1958, max = 2021),
+                           plotOutput("constructor_plot"),
+                           br(),
+                           gt_output("season_table"), br(), br()
+                  ),
+                  # tabPanel(title = "Constructor History",
+                  #         selectInput(inputId = "team", label = "Constructor Name", choices = constructor_results$Team),
+                  #         gt_output("team_table")                          
+                          # plotOutput("season_input")
+                  # ),     
+                  # tabPanel(title = "Driver History",
+                  #            selectInput(inputId = "driver", label = "Driver Name", choices = drivers$surname),
+                  #            tableOutput("driver_table")
+                  # ),
+                  tabPanel(title = "2021 Schedule",
+                          gt_output(outputId = "round_table")
+                  ),
+                  tabPanel(title = "Race Results 2021",
+                           # numericInput(inputId = "year_gif", label = "Enter a year from 1950 - 2021", value = 2020, min = 1950, max = 2021),
+                           selectInput(inputId = "race_gif", label = "Select a round to animate from the 2021 season", choices = c("Bahrain" = 1, "Imola" = 2),
+                                       selected = NULL),
+                           imageOutput("results_gif", width = "600px", height = "400px"),
+                           br(),br(),br(),br(),br(),br(),
+                           gt_output("results_table"),
+                           br(), br()
+                  )
+)
+
+server <- function(input, output) {
+  
+  season_driver <- reactive({
+    getFinalF1Standings(input$season_driver)
+  })
+  
+  season_team <- reactive({
+    getFinalF1Standings(input$year, type = "constructor")
+  })  
+  
+  schedule_21 <- getF1Schedule2(2021)
+  
+  schedule <- reactive({
+    getF1Schedule(input$race_gif)
+  })
+  
+  lapinfo <- reactive({
+    getLapsByRace(2021, input$race_gif)
+  })
+  
+  race_result <- reactive({
+    getRaceResults(2021, input$race_gif)
+  })
+    
+# Season Driver Tab
+  observeEvent(input$season_driver, {
+    
+    # Plot
+    output$season_driver <- renderPlot({
+      # Fix overlap labels: some drivers are being dropped
+      ggplot(season_driver()) +
+        aes(x = position, y = points, label = driverId) +
+        geom_text(check_overlap = F) +
+        scale_x_continuous(breaks = c(1:30)) +
+        # scale_y_reverse() +
+        labs(x = "Position", y = "Points", title = "Final Season Standings") +
+        theme_bw() + theme(axis.text = element_text(size = 14), axis.title = element_text(size = 16))
+    })
+    # Table
+    output$driver_season <- render_gt({
+      season_driver() %>% 
+        select(position, driverId, points, wins) %>% 
+        gt() %>% 
+        tab_style(locations = cells_body(columns = "driverId"), style = cell_text(transform = "capitalize")) %>% 
+        tab_options(table.width = px(500)) %>%
+        cols_align(align = "center", columns = TRUE) %>% 
+        cols_label(position = "Position", points = "Points", wins = "Wins", driverId = "Driver")
+    })
+    
+  })
+  
+# Season COnstructor Tab
+  observeEvent(input$year,{
+    
+    # Plot
+    output$constructor_plot <- renderPlot({
+        ggplot(season_team()) +
+          aes(x = position, y = points, label = constructorId) +
+          geom_text(size = 5) +
+          scale_x_continuous(breaks = c(1:20)) +
+          labs(x = "Position", y = "Points", title = "Final Season Standings") +
+          theme_bw() + theme(axis.text = element_text(size = 14), axis.title = element_text(size = 16))        
+      })  
+    
+    # output$constructor_plot <- renderPlot({
+    #   constructor_results %>% 
+    #     filter(year == input$year) %>% 
+    #     ggplot() +
+    #       aes(x = Pos, y = Pts, label = Team) +
+    #       geom_text() +
+    #       scale_x_continuous(breaks = c(1:20)) +
+    #       labs(title = "Final Season Standings")
+    #   })
+    
+    # Table
+    output$season_table <- render_gt({
+      season_team() %>% 
+        select(position, constructorId, points, wins) %>% 
+        gt() %>% 
+        tab_style(locations = cells_body(columns = "constructorId"), style = cell_text(transform = "capitalize")) %>% 
+        tab_options(table.width = px(500)) %>%
+        cols_align(align = "center", columns = TRUE) %>% 
+        cols_label(position = "Position", points = "Points", wins = "Wins", constructorId = "Constructor")        
+    })
+    # Table using the other constructor results dataframe from the for loop
+    # output$season_table <- render_gt({
+    #   constructor_results %>% 
+    #     filter(year == input$year) %>%
+    #     gt() %>% 
+    #     fmt_number(columns = "Pos", decimals = 0) %>% 
+    #     cols_align(align = "center", columns = TRUE) %>%  
+    #     cols_label(Pos = "Position", Pts = "Points", year = "Year")
+    #   })
+      
+  })
+  
+# Constructor History Tab
+  # observeEvent(input$team,{
+  #  
+  #   output$team_table <- render_gt({
+  #     constructor_results %>% 
+  #       filter(Team == input$team) %>%
+  #       group_by(Pos) %>%
+  #       summarize(num_finishes = n()) %>% 
+  #       gt() %>% 
+  #       fmt_number(columns = "Pos", decimals = 0) %>% 
+  #       cols_align(align = "center", columns = TRUE) %>%         
+  #       cols_label(Pos = "Position", num_finishes = "Number of Finishes")
+  #     })
+  # })
+  # 
+# Driver History Tab  
+  output$driver_table <- render_gt({
+    drivers
+  })
+  
+# Calendar Tab
+  output$round_table <- render_gt({
+    schedule_21 %>% 
+      mutate(circuit.name = Circuit$circuitName,
+             City = Circuit$Location$locality,
+             Country = Circuit$Location$country) %>% 
+      select(round, raceName, circuit.name, City, Country, date, time) %>%     
+      gt() %>%
+      cols_align(align = "center", columns = TRUE) %>% 
+      fmt_time(columns = vars(time), time_style = 4) %>% 
+      fmt_date(columns = vars(date), date_style = 5) %>% 
+      cols_label(round = "Round", raceName = "Race Name", circuit.name = "Circuit Name", date = "Date", time = "Local Race Time")
+    })
+
+# Animation Tab
+  output$results_gif <- renderImage({
+    outfile <- tempfile(fileext = ".gif")
+    
+    gif <- ggplot(lapinfo()) +
+      aes(x = lap, y = position, label = driverId) +
+      geom_text() +
+      scale_y_reverse(breaks = c(1:30)) +
+      labs(title = "Lap {frame_time}") +
+      transition_time(lap) +
+      ease_aes("linear")
+    
+    anim_save("outfile.gif", animate(gif))
+    
+    list(src = "outfile.gif",
+         contentType = 'image/gif'
+         # width = 400,
+         # height = 300,
+         # alt = "This is alternate text"
+    )},deleteFile = TRUE)
+  # result table
+  output$results_table <- render_gt({
+    race_result() %>% 
+      mutate(driver.familyname = Driver$familyName,
+             constructor.name = Constructor$name,
+             time = Time$time) %>% 
+      select(positionText, points, driver.familyname, constructor.name, time, grid) %>% 
+      gt() %>% 
+      cols_align(align = "center", columns = TRUE) %>% 
+      cols_label(positionText = "Position", points = "Points", driver.familyname = "Driver", constructor.name = "Constructor",
+                 time = "Total Race Time", grid = "Qualifying Position")
+      
+    })
+  
+}
+
+
+
+shinyApp(server = server, ui = ui)
+
+```
+
+
+## Conclusions
+The shiny app I made needs a lot of work but it is functional in some aspects. I would like to make it prettier using HTML + CSS code, but I was struggling to implement these aesthetics with the rest of my shiny app code. There is also some tweaking I would want to do for the figures and the how the figures/tables are laid out in a tab.
+
+
+
+<!-- ########## JUNK ################## -->
+
+```{r TESTING PLOTS & TABLES, include = FALSE, eval = FALSE}
+
+################## JUNK ##########################
+# Test different plots, tables, etc., to possibly implement into shiny app.
+
+season <- 2010
+final.2010 <- getFinalF1Standings(season, type = "driver") 
+
+ggplot(final.2010) + 
+  aes(x = points, y = position, label = driverId) +
+  geom_text() +
+  scale_y_reverse()
+
+getFinalF1Standings(season, type = "constructor") 
+ggplot(final.2010) + 
+  aes(x = points, y = position, label = constructorId) +
+  geom_text() +
+  scale_y_reverse()
+
+constructor_results %>% 
+  filter(year == 1985) %>% 
+  ggplot() +
+    aes(x = Pos, y = Pts, color = Team) +
+    geom_point(size = 2) +
+    scale_x_continuous(breaks = c(1:20))
+
+
+constructor_results %>% 
+  filter(year == 1985) %>%
+  gt() %>% 
+  fmt_number(columns = "Pos", decimals = 0)
+
+constructor_results %>% 
+  filter(Team == "Ferrari") %>%
+  arrange(Pos) %>% 
+  gt() %>% 
+  fmt_number(columns = "Pos", decimals = 0)
+
+constructor_results %>% 
+  filter(Team == "Ferrari") %>%
+  group_by(Pos) %>%
+  summarize(num_finishes = n())
+
+
+
+# drivers_merged <- left_join(driver_standings, drivers, by = "driverId")
+# 
+# drivers_merged %>%
+#   filter(forename == "Lewis" & surname == "Hamilton") %>%
+#   group_by(driverRef, code, position) %>%
+#   count()
+
+
+calendar_2021 <- getF1Schedule2(2021)
+
+calendar_2021 %>% 
+  mutate(circuit.name = Circuit$circuitName,
+         City = Circuit$Location$locality,
+         Country = Circuit$Location$country) %>% 
+  select(round, raceName, circuit.name, City, Country, date, time) %>%
+  gt() %>% 
+  fmt_time(columns = vars(time), time_style = 4) %>% 
+  fmt_date(columns = vars(date),
+               date_style = 5) %>% 
+  cols_align(align = "center", columns = TRUE) %>% 
+  cols_label(round = "Round", raceName = "Grand Prix", circuit.name = "Circuit Name", date = "Date", time = "Local Race Time")
+
+test <- calendar_2021$Circuit
+
+calendar_2021$Circuit$Location$locality
+calendar_2021$Circuit$Location$country
+
+
+########### Animated gif
+# create a gif that shows a race result over each lap
+
+install.packages("gganimate")
+library(gganimate)
+install.packages("gifski")
+library(gifski)
+
+race2.2020 <- getLapsByRace(2020, 2)
+race7.2012 <- getLapsByRace(2012, 7)
+
+race.gif <-ggplot(race2.2020) +
+      aes(x = lap, y = position, label = driverId) +
+      geom_text() +
+      scale_y_reverse(breaks = c(1:20)) +
+      labs(title = "Styrian Grand Prix 2020", subtitle = "Lap: {frame_time}") +
+      transition_time(lap) +
+      ease_aes("linear")
+      
+animate(race.gif, renderer = gifski_renderer())
+
+
+canada2012 <- 
+  ggplot(race7.2012) +
+  aes(x = lap, y = position, label = driverId) +
+    geom_text() +
+    scale_y_reverse(breaks = c(1:30)) +
+    labs(title = "Canadian Grand Prix 2012", subtitle = "Lap {frame_time} of 71") +
+    transition_states(states = as.factor(position), transition_length = 25) +
+    transition_time(lap) +
+    ease_aes("linear")
+      
+animate(canada2012, renderer = gifski_renderer())
+
+dummy.results <- getRaceResults(2021,2)
+
+```
+
+
+
