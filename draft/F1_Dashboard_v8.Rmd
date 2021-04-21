@@ -51,7 +51,7 @@ First we need to create a connection to the `Ergast API` using the `formula1data
 
 
 ## F1 Schedule Function
-This is a modified version of the `getF1Schedule()` function from the `formula1data` package. Used to create the calendar tab in the shiny app.
+This is a modified version of the `getF1Schedule()` function from the `formula1data` package. Used to create the calendar tab in the shiny app. Run this code before you run shiny app.
 
 ```{r edit getF1schedule function}
 
