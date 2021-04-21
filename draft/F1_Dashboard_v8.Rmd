@@ -7,7 +7,9 @@ runtime: shiny
 ---
 
 ## Note to Marta and Jiuzhou: 
-I cannot get the app to work by uploading to the `shinyapps.io`, however it does run on my local machine within this RMD file. I **think** I've uploaded the correct files that I'm using locally for it to run on your personal machine. If not please let me know! The knitted RMD file embeds the app, but the formatting gets weird and it's more difficult to navigate. If you run the `Shiny Formula 1 App!` section below the app **should** work (after loading packages of course). 
+I cannot get the app to work by uploading to the `shinyapps.io`, however it does run on my local machine within this RMD file. I **think** I've uploaded the correct files that I'm using locally for it to run on your personal machine. If not please let me know! The knitted RMD file embeds the app, but the formatting gets weird and it's more difficult to navigate. If you run the `Shiny Formula 1 App!` section below the app **should** work (after loading packages of course).  
+
+Link to code on github: (https://github.com/smit8854/Shiny_F1_app)
 
 ## Data Sources
 1. [Ergast Api](http://ergast.com/mrd/)  
