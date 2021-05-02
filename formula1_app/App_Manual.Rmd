@@ -1,0 +1,58 @@
+---
+title: "F1 App Manual"
+author: "Michael L. Smith"
+date: "`r format(Sys.time(), '%m.%d.%Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Name
+Formula 1 Dashboard
+
+
+## Purpose
+The main purpose of the app will be to serve as a quick information dashboard for Formula 1 race results.
+
+## Availability
+The app can be accessed on [shinyapps.io](https://michael-l-smith.shinyapps.io/formula1_app/)
+
+## Data Sources
+1. [Ergast API](http://ergast.com/mrd/)  
+2. [Arkraieski Github](https://github.com/arkraieski/formula1data)  
+
+The main data source was the [Ergast API](http://ergast.com/mrd/), a publicly available motor-sport data set that is updated after the results of each race weekend. The other data source is the `formula1data` package available on [Arkraieski's Github](https://github.com/arkraieski/formula1data). Because this pacakge is not on `CRAN` you will need to use the `devtools` package. An example is below.
+```{r install_git, eval=FALSE}
+
+install.packages("devtools")
+library(devtools)
+install_github("arkraieski/formula1data")
+
+```
+
+
+## App Functions
+The app is divided into four main sections located at the top of the web-page as different tabs.  
+- The `Season Driver Results` tab allows the user to input a year from 1950 - 2021 and it will show the final season standings for all the drivers in both a graph and table format. The figure plots driver names and the number of points they received as a function of final season position. the table shows the same information but with the addition of how many wins each driver had for that season. 
+
+- The `Season Constructor Results` tab is similar to the previous tab but displays the constructor (i.e. team) information. Users enter a year from 1958 - 2021 and a figure and table appear.  
+
+- The `2021 Schedule` simply loads a table that displays the race calendar schedule for the 2021 season and requires no input from the user. One additional feature to add would be to allow the user to input their timezone and a column in the table would update to display the race time relevant to the user.  
+
+- The `Season Driver Results` tab allows the user to select a race from the 2021 season and see the race results in the form of a gif. There is also a table of the final race results that displays the driver and constructor names, final position, points, total race time and the qualifying position. The gif does take a minute or two to load, so it would be nice to show a loading bar while the user waits, but I'm not sure how to implement that (google was not helpful). I'd also like the user to be able to pause the gif and for the names of specific drivers who retired on a given lap to remain in the animation. Currently if a driver does not finish the race their name simply disappears which isn't ideal.
+
+## Programming Challenges
+The first major challenge I faced was figuring how to make use of the API data. Prior to this project I had zero experience in working with APIs and data sources pulled directly from the web. When I first downloaded the csv files I also noticed many of the column variables were coded to reference other csv files. For example, When looking at the csv file for `driver standings`, there was a column labeled `driverId` where the values in that column were indexing the names of the driver in another column. I didn't know how to approach this so after some digging I stumbled upon the `formula1data` package that had built in functions to pulled information into a data-frame format I was more familiar with. In addition, I would say the second biggest challenge was getting more familiar with how shiny apps coding structure worked and getting the app to be hosted on `shinyapps.io`. 
+
+
+## Division of Labor
+Me, myself, and I. 
+
+## Future Work
+There is a lot of room for improvement with my app, both in terms of funcationality and aesthetic. For the latter, I have implemented zero html or css styling into my app, and it shows. I was more focused on improving the functionality of the app instead of its appearance. In addition to the functional improvements I listed above, I would have liked for there to be a "driver summary" and "constructor summary" tab in the app. The main purpose of these tabs would be for the user to select a driver or team and see historical data over the course of the career. It would show how number of races, number of wins, pole positions, championships won, points scored, etc. I also think it would be cool to add weather information in the `2021 Schedule` tab, so the user could see the weather forcast for the race weekend. I have no idea how I would implement this though. Finally, I would love to spend the time to make this app pretty and more visually appealing. 
+
+
+
+
